@@ -73,12 +73,37 @@ def extract_curve(log_file: Path):
     return curve
 
 
+def default_log_path(results_dir: Path, platform: str, workload: str) -> Path:
+    return results_dir / f"{platform}_{workload}_log.json"
+
+
+def default_output_path(results_dir: Path, platform: str, workload: str) -> Path:
+    return results_dir / f"{platform}_{workload}.json"
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--target", type=str, default="llvm")
     parser.add_argument("--platform", type=str, default="local_cpu")
     parser.add_argument("--workload", choices=WORKLOADS.keys(), default="conv2d")
     parser.add_argument("--trials", type=int, default=100)
+    parser.add_argument(
+        "--results-dir",
+        type=str,
+        default="exp2_operator_level/results",
+    )
+    parser.add_argument(
+        "--output",
+        type=str,
+        default=None,
+        help="Path to the tuning curve JSON output.",
+    )
+    parser.add_argument(
+        "--log-output",
+        type=str,
+        default=None,
+        help="Path to the auto-scheduler log JSON output.",
+    )
     args = parser.parse_args()
 
     target = tvm.target.Target(args.target)
@@ -89,10 +114,15 @@ def main():
         target=target,
     )
 
-    result_dir = Path("exp2_operator_level/results")
-    result_dir.mkdir(parents=True, exist_ok=True)
+    results_dir = Path(args.results_dir)
+    results_dir.mkdir(parents=True, exist_ok=True)
 
-    log_file = result_dir / f"{args.platform}_{args.workload}_log.json"
+    log_file = Path(args.log_output) if args.log_output else default_log_path(
+        results_dir=results_dir,
+        platform=args.platform,
+        workload=args.workload,
+    )
+    log_file.parent.mkdir(parents=True, exist_ok=True)
 
     tune_option = auto_scheduler.TuningOptions(
         num_measure_trials=args.trials,
@@ -104,10 +134,16 @@ def main():
 
     curve = extract_curve(log_file)
 
-    output = result_dir / f"{args.platform}_{args.workload}.json"
+    output = Path(args.output) if args.output else default_output_path(
+        results_dir=results_dir,
+        platform=args.platform,
+        workload=args.workload,
+    )
+    output.parent.mkdir(parents=True, exist_ok=True)
     with output.open("w", encoding="utf-8") as f:
         json.dump(curve, f, indent=2)
 
+    print(f"Saved tuning log: {log_file}")
     print(f"Saved curve: {output}")
 
 

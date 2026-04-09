@@ -1,4 +1,4 @@
-# exp3_end2end/exp3_end2end.py
+# exp3_end2end/run_end2end.py
 from __future__ import annotations
 
 import json
@@ -44,11 +44,25 @@ def run(mod, params, target, opt_level):
     return result["mean_ms"]
 
 
+def default_output_path(results_dir: Path, platform: str, model: str) -> Path:
+    return results_dir / f"{platform}_{model}.json"
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--target", type=str, default="llvm")
     parser.add_argument("--platform", type=str, default="local")
     parser.add_argument("--model", choices=["resnet", "mobilenet"], default="resnet")
+    parser.add_argument(
+        "--results-dir",
+        type=str,
+        default="exp3_end2end/results",
+    )
+    parser.add_argument(
+        "--output",
+        type=str,
+        default=None,
+    )
     args = parser.parse_args()
 
     mod, params = get_model(args.model)
@@ -64,14 +78,20 @@ def main():
         "speedup": no_opt / opt,
     }
 
-    out_dir = Path("exp3_end2end/results")
-    out_dir.mkdir(parents=True, exist_ok=True)
+    results_dir = Path(args.results_dir)
+    results_dir.mkdir(parents=True, exist_ok=True)
 
-    out_file = out_dir / f"{args.platform}_{args.model}.json"
-    with out_file.open("w") as f:
+    out_file = Path(args.output) if args.output else default_output_path(
+        results_dir=results_dir,
+        platform=args.platform,
+        model=args.model,
+    )
+    out_file.parent.mkdir(parents=True, exist_ok=True)
+    with out_file.open("w", encoding="utf-8") as f:
         json.dump(result, f, indent=2)
 
     print(result)
+    print(f"Saved: {out_file}")
 
 
 if __name__ == "__main__":

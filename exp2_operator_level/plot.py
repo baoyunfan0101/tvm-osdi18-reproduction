@@ -2,13 +2,27 @@
 from __future__ import annotations
 
 import json
+import argparse
 from pathlib import Path
 import matplotlib.pyplot as plt
 
 
 def main():
-    result_dir = Path("exp2_operator_level/results")
-    files = list(result_dir.glob("*.json"))
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--results-dir",
+        type=str,
+        default="exp2_operator_level/results",
+    )
+    parser.add_argument(
+        "--output",
+        type=str,
+        default="exp2_operator_level/results/tuning_curve.png",
+    )
+    args = parser.parse_args()
+
+    result_dir = Path(args.results_dir)
+    files = sorted(result_dir.glob("*.json"))
 
     plt.figure()
 
@@ -16,7 +30,7 @@ def main():
         if "log" in f.name:
             continue
 
-        with f.open() as fp:
+        with f.open(encoding="utf-8") as fp:
             data = json.load(fp)
 
         trials = [d["trial"] for d in data]
@@ -31,7 +45,8 @@ def main():
     plt.legend()
     plt.tight_layout()
 
-    out = result_dir / "tuning_curve.png"
+    out = Path(args.output)
+    out.parent.mkdir(parents=True, exist_ok=True)
     plt.savefig(out, dpi=200)
     plt.close()
 

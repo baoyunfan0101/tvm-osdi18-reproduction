@@ -2,21 +2,35 @@
 from __future__ import annotations
 
 import json
+import argparse
 import numpy as np
 from pathlib import Path
 import matplotlib.pyplot as plt
 
 
 def main():
-    result_dir = Path("exp3_end2end/results")
-    files = list(result_dir.glob("*.json"))
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--results-dir",
+        type=str,
+        default="exp3_end2end/results",
+    )
+    parser.add_argument(
+        "--output",
+        type=str,
+        default="exp3_end2end/results/end2end.png",
+    )
+    args = parser.parse_args()
+
+    result_dir = Path(args.results_dir)
+    files = sorted(result_dir.glob("*.json"))
 
     labels = []
     no_opt = []
     opt = []
 
     for f in files:
-        with f.open() as fp:
+        with f.open(encoding="utf-8") as fp:
             d = json.load(fp)
 
         labels.append(f"{d['platform']}\n{d['model']}")
@@ -36,7 +50,8 @@ def main():
     plt.legend()
     plt.tight_layout()
 
-    out = result_dir / "end2end.png"
+    out = Path(args.output)
+    out.parent.mkdir(parents=True, exist_ok=True)
     plt.savefig(out, dpi=200)
     plt.close()
 
