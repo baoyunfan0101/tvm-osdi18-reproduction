@@ -1,0 +1,4 @@
+numpy<2
+matplotlib
+xgboost
+pytest

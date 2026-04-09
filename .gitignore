@@ -1,0 +1,31 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Virtual environment
+.venv/
+env/
+venv/
+
+# Build artifacts
+build/
+dist/
+*.egg-info/
+
+# TVM build
+3rdparty/tvm/build/
+3rdparty/tvm/.git/
+
+# Results
+exp1_graph_level/results/
+exp2_operator_level/results/
+exp3_end2end/results/
+
+# OS
+.DS_Store
+
+# IDE
+.vscode/
+.idea/
