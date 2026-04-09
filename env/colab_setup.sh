@@ -52,12 +52,9 @@ python -m pip install \
   typing-extensions
 
 echo "[Colab Setup 5/9] Preparing TVM source tree..."
-if [ -d "${PROJECT_ROOT}/${TVM_DIR}" ]; then
-  echo "${PROJECT_ROOT}/${TVM_DIR} already exists, reusing it."
-else
-  mkdir -p "$(dirname "${PROJECT_ROOT}/${TVM_DIR}")"
-  git clone --recursive https://github.com/apache/tvm "${PROJECT_ROOT}/${TVM_DIR}"
-fi
+rm -rf "${PROJECT_ROOT:?}/${TVM_DIR}"
+mkdir -p "$(dirname "${PROJECT_ROOT}/${TVM_DIR}")"
+git clone --recursive https://github.com/apache/tvm "${PROJECT_ROOT}/${TVM_DIR}"
 
 cd "${PROJECT_ROOT}/${TVM_DIR}"
 git fetch --all --tags
