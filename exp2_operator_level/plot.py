@@ -7,6 +7,16 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 
 
+def extract_curve(data):
+    if isinstance(data, list):
+        return data
+    if isinstance(data, dict):
+        if "curve" in data:
+            return data["curve"]
+        raise ValueError("Unsupported JSON format: missing 'curve' field.")
+    raise ValueError("Unsupported JSON format.")
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument(
@@ -22,26 +32,27 @@ def main():
     args = parser.parse_args()
 
     result_dir = Path(args.results_dir)
-    files = sorted(result_dir.glob("*.json"))
+    files = list(result_dir.glob("*.json"))
 
-    plt.figure()
+    plt.figure(figsize=(10, 5))
 
     for f in files:
         if "log" in f.name:
             continue
 
-        with f.open(encoding="utf-8") as fp:
+        with f.open() as fp:
             data = json.load(fp)
 
-        trials = [d["trial"] for d in data]
-        latency = [d["best_ms"] for d in data]
+        curve = extract_curve(data)
+        trials = [d["trial"] for d in curve]
+        latency = [d["best_ms"] for d in curve]
 
         label = f.stem
         plt.plot(trials, latency, label=label)
 
     plt.xlabel("Trials")
     plt.ylabel("Best Latency (ms)")
-    plt.title("Exp2: Operator-Level Tuning Curve")
+    plt.title("Exp2: Operator-Level Tuning Curve Across Platforms and Workloads")
     plt.legend()
     plt.tight_layout()
 

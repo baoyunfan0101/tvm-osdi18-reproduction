@@ -11,9 +11,25 @@ from tvm import te, auto_scheduler
 
 
 @auto_scheduler.register_workload
-def conv2d_workload():
-    N, H, W, CI, CO, KH, KW = 1, 224, 224, 3, 16, 3, 3
-    data = te.placeholder((N, CI, H + 2, W + 2), name="data")
+def conv2d_workload(
+    batch_size: int,
+    height: int,
+    width: int,
+    in_channels: int,
+    out_channels: int,
+    kernel_size: int,
+):
+    N, H, W, CI, CO, KH, KW = (
+        batch_size,
+        height,
+        width,
+        in_channels,
+        out_channels,
+        kernel_size,
+        kernel_size,
+    )
+    pad = KH // 2
+    data = te.placeholder((N, CI, H + 2 * pad, W + 2 * pad), name="data")
     kernel = te.placeholder((CO, CI, KH, KW), name="kernel")
 
     rc = te.reduce_axis((0, CI), name="rc")
@@ -32,9 +48,23 @@ def conv2d_workload():
 
 
 @auto_scheduler.register_workload
-def depthwise_conv_workload():
-    N, H, W, C, KH, KW = 1, 224, 224, 16, 3, 3
-    data = te.placeholder((N, C, H + 2, W + 2), name="data")
+def depthwise_conv_workload(
+    batch_size: int,
+    height: int,
+    width: int,
+    channels: int,
+    kernel_size: int,
+):
+    N, H, W, C, KH, KW = (
+        batch_size,
+        height,
+        width,
+        channels,
+        kernel_size,
+        kernel_size,
+    )
+    pad = KH // 2
+    data = te.placeholder((N, C, H + 2 * pad, W + 2 * pad), name="data")
     kernel = te.placeholder((C, 1, KH, KW), name="kernel")
 
     ry = te.reduce_axis((0, KH), name="ry")
@@ -68,7 +98,7 @@ def extract_curve(log_file: Path):
         if res.error_no == 0:
             latency = float(np.mean([float(x.value) for x in res.costs]) * 1000.0)
             best = min(best, latency)
-            curve.append({"trial": i + 1, "best_ms": best})
+            curve.append({"trial": i + 1, "best_ms": best, "latency_ms": latency})
 
     return curve
 
@@ -87,6 +117,15 @@ def main():
     parser.add_argument("--platform", type=str, default="local_cpu")
     parser.add_argument("--workload", choices=WORKLOADS.keys(), default="conv2d")
     parser.add_argument("--trials", type=int, default=100)
+
+    parser.add_argument("--batch-size", type=int, default=1)
+    parser.add_argument("--height", type=int, default=224)
+    parser.add_argument("--width", type=int, default=224)
+    parser.add_argument("--in-channels", type=int, default=3)
+    parser.add_argument("--out-channels", type=int, default=16)
+    parser.add_argument("--channels", type=int, default=16)
+    parser.add_argument("--kernel-size", type=int, default=3)
+
     parser.add_argument(
         "--results-dir",
         type=str,
@@ -108,9 +147,27 @@ def main():
 
     target = tvm.target.Target(args.target)
 
+    if args.workload == "conv2d":
+        task_args = (
+            args.batch_size,
+            args.height,
+            args.width,
+            args.in_channels,
+            args.out_channels,
+            args.kernel_size,
+        )
+    else:
+        task_args = (
+            args.batch_size,
+            args.height,
+            args.width,
+            args.channels,
+            args.kernel_size,
+        )
+
     task = auto_scheduler.SearchTask(
         func=WORKLOADS[args.workload],
-        args=(),
+        args=task_args,
         target=target,
     )
 
@@ -140,8 +197,26 @@ def main():
         workload=args.workload,
     )
     output.parent.mkdir(parents=True, exist_ok=True)
+
+    payload = {
+        "platform": args.platform,
+        "target": args.target,
+        "workload": args.workload,
+        "shape": {
+            "batch_size": args.batch_size,
+            "height": args.height,
+            "width": args.width,
+            "in_channels": args.in_channels,
+            "out_channels": args.out_channels,
+            "channels": args.channels,
+            "kernel_size": args.kernel_size,
+        },
+        "trials": args.trials,
+        "curve": curve,
+    }
+
     with output.open("w", encoding="utf-8") as f:
-        json.dump(curve, f, indent=2)
+        json.dump(payload, f, indent=2)
 
     print(f"Saved tuning log: {log_file}")
     print(f"Saved curve: {output}")

@@ -12,22 +12,22 @@ from tvm import relay
 from common.benchmark import benchmark_callable
 
 
-def get_model(name):
+def get_model(name: str, batch_size: int):
     if name == "resnet":
         from tvm.relay.testing import resnet
 
-        mod, params = resnet.get_workload(num_layers=18, batch_size=1)
+        mod, params = resnet.get_workload(num_layers=18, batch_size=batch_size)
     elif name == "mobilenet":
         from tvm.relay.testing import mobilenet
 
-        mod, params = mobilenet.get_workload(batch_size=1)
+        mod, params = mobilenet.get_workload(batch_size=batch_size)
     else:
         raise ValueError(name)
 
     return mod, params
 
 
-def run(mod, params, target, opt_level):
+def run(mod, params, target, opt_level, number: int, repeat: int, warmup: int):
     with tvm.transform.PassContext(opt_level=opt_level):
         lib = relay.build(mod, target=target, params=params)
 
@@ -39,9 +39,9 @@ def run(mod, params, target, opt_level):
 
     module.set_input("data", tvm.nd.array(data, dev))
 
-    result = benchmark_callable(lambda: module.run(), number=100)
+    result = benchmark_callable(lambda: module.run(), number=number, repeat=repeat, warmup=warmup)
 
-    return result["mean_ms"]
+    return result
 
 
 def default_output_path(results_dir: Path, platform: str, model: str) -> Path:
@@ -53,6 +53,10 @@ def main():
     parser.add_argument("--target", type=str, default="llvm")
     parser.add_argument("--platform", type=str, default="local")
     parser.add_argument("--model", choices=["resnet", "mobilenet"], default="resnet")
+    parser.add_argument("--batch-size", type=int, default=1)
+    parser.add_argument("--repeat", type=int, default=10)
+    parser.add_argument("--number", type=int, default=100)
+    parser.add_argument("--warmup", type=int, default=5)
     parser.add_argument(
         "--results-dir",
         type=str,
@@ -65,17 +69,23 @@ def main():
     )
     args = parser.parse_args()
 
-    mod, params = get_model(args.model)
+    mod, params = get_model(args.model, args.batch_size)
 
-    no_opt = run(mod, params, args.target, opt_level=0)
-    opt = run(mod, params, args.target, opt_level=3)
+    no_opt = run(mod, params, args.target, opt_level=0, number=args.number, repeat=args.repeat, warmup=args.warmup)
+    opt = run(mod, params, args.target, opt_level=3, number=args.number, repeat=args.repeat, warmup=args.warmup)
 
     result = {
         "platform": args.platform,
+        "target": args.target,
         "model": args.model,
-        "no_opt_ms": no_opt,
-        "opt_ms": opt,
-        "speedup": no_opt / opt,
+        "batch_size": args.batch_size,
+        "no_opt_ms": no_opt["mean_ms"],
+        "opt_ms": opt["mean_ms"],
+        "speedup": no_opt["mean_ms"] / opt["mean_ms"],
+        "settings": {
+            "no_opt": no_opt,
+            "opt": opt,
+        },
     }
 
     results_dir = Path(args.results_dir)

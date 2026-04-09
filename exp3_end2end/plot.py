@@ -8,6 +8,19 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 
 
+def add_bar_labels(bars):
+    for bar in bars:
+        height = bar.get_height()
+        plt.text(
+            bar.get_x() + bar.get_width() / 2,
+            height,
+            f"{height:.2f}x",
+            ha="center",
+            va="bottom",
+            fontsize=9,
+        )
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument(
@@ -16,13 +29,16 @@ def main():
         default="exp3_end2end/results",
     )
     parser.add_argument(
-        "--output",
+        "--output-dir",
         type=str,
-        default="exp3_end2end/results/end2end.png",
+        default="exp3_end2end/results",
     )
     args = parser.parse_args()
 
     result_dir = Path(args.results_dir)
+    out_dir = Path(args.output_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
+
     files = sorted(result_dir.glob("*.json"))
 
     labels = []
@@ -41,21 +57,35 @@ def main():
     w = 0.35
 
     plt.figure(figsize=(10, 5))
-    plt.bar(x - w / 2, no_opt, w, label="no opt")
-    plt.bar(x + w / 2, opt, w, label="opt")
+    plt.bar(x - w / 2, no_opt, w, label="w/o optimization")
+    plt.bar(x + w / 2, opt, w, label="w/ optimization")
 
     plt.xticks(x, labels)
-    plt.ylabel("Latency (ms)")
-    plt.title("Exp3: End-to-End Performance")
+    plt.ylabel("Mean Latency (ms)")
+    plt.title("Exp3: End-to-End Performance Across Platforms and Workloads")
     plt.legend()
     plt.tight_layout()
 
-    out = Path(args.output)
-    out.parent.mkdir(parents=True, exist_ok=True)
-    plt.savefig(out, dpi=200)
+    latency_out = out_dir / "latency.png"
+    plt.savefig(latency_out, dpi=200)
     plt.close()
 
-    print(f"Saved: {out}")
+    speedup = [a / b for a, b in zip(no_opt, opt)]
+
+    plt.figure(figsize=(10, 5))
+    bars = plt.bar(x, speedup, w)
+    plt.xticks(x, labels)
+    plt.ylabel("Speedup (x)")
+    plt.title("Exp3: End-to-End Performance Across Platforms and Workloads")
+    add_bar_labels(bars)
+    plt.tight_layout()
+
+    speedup_out = out_dir / "speedup.png"
+    plt.savefig(speedup_out, dpi=200)
+    plt.close()
+
+    print(f"Saved: {latency_out}")
+    print(f"Saved: {speedup_out}")
 
 
 if __name__ == "__main__":

@@ -57,11 +57,11 @@ python -m exp2_operator_level.run_tuning --target llvm --platform mac_cpu --work
 python -m exp2_operator_level.run_tuning --target llvm --platform mac_cpu --workload depthwise
 
 # Google Colab
-!python -m exp2_operator_level.run_tuning --target llvm --platform colab_cpu --workload conv2d --trials 50
-!python -m exp2_operator_level.run_tuning --target llvm --platform colab_cpu --workload depthwise --trials 50
+!python -m exp2_operator_level.run_tuning --target llvm --platform colab_cpu --workload conv2d
+!python -m exp2_operator_level.run_tuning --target llvm --platform colab_cpu --workload depthwise
 
-!python -m exp2_operator_level.run_tuning --target cuda --platform colab_gpu --workload conv2d --trials 50
-!python -m exp2_operator_level.run_tuning --target cuda --platform colab_gpu --workload depthwise --trials 50
+!python -m exp2_operator_level.run_tuning --target cuda --platform colab_gpu --workload conv2d
+!python -m exp2_operator_level.run_tuning --target cuda --platform colab_gpu --workload depthwise
 ```
 
 ### Plot
